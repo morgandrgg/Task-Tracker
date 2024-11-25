@@ -1,13 +1,30 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 function App() {
   const [tasks, setTasks] = useState([]);
   const [task, setTask] = useState("");
-  const [done, setDone] = useState({});
+  const [filter, setFilter] = useState("all"); // "all", "completed", "pending"
+  const [message, setMessage] = useState("");
+
+  // Load tasks from local storage on mount
+  useEffect(() => {
+    const storedTasks = JSON.parse(localStorage.getItem("tasks")) || [];
+    setTasks(storedTasks);
+
+    // Show welcome message
+    setMessage("Welcome back to Task Tracker App!");
+    const timer = setTimeout(() => setMessage(""), 3000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Save tasks to local storage on update
+  useEffect(() => {
+    localStorage.setItem("tasks", JSON.stringify(tasks));
+  }, [tasks]);
 
   const addTask = () => {
     if (task.trim()) {
-      setTasks([...tasks, task]);
+      setTasks([...tasks, { text: task, done: false }]);
       setTask("");
     }
   };
@@ -17,142 +34,98 @@ function App() {
   };
 
   const toggleDone = (index) => {
-    setDone({ ...done, [index]: !done[index] });
+    const updatedTasks = tasks.map((t, i) =>
+      i === index ? { ...t, done: !t.done } : t
+    );
+    setTasks(updatedTasks);
   };
 
+  const clearAll = () => {
+    setTasks([]);
+  };
+
+  const filteredTasks = tasks.filter((t) => {
+    if (filter === "all") return true;
+    if (filter === "completed") return t.done;
+    if (filter === "pending") return !t.done;
+    return true;
+  });
+
   return (
-    <div
-      style={{
-        backgroundColor: "#f9f9f9",
-        minHeight: "100vh",
-        padding: "20px",
-        fontFamily: "Arial, sans-serif",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-    >
-      <div
-        style={{
-          backgroundColor: "white",
-          borderRadius: "10px",
-          boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
-          width: "400px",
-          padding: "20px",
-        }}
-      >
-        <h1
-          style={{
-            fontSize: "24px",
-            color: "#333",
-            textAlign: "center",
-            marginBottom: "20px",
-          }}
-        >
-          Task Tracker App
-        </h1>
-        <div style={{ marginBottom: "20px", display: "flex" }}>
+    <div className="page">
+      <div className="card">
+        <h1 className="heading">Task Tracker App</h1>
+        {/* Conditional Rendering for Message */}
+        {message && <div className="message">{message}</div>}
+        <div className="sub-card">
           <input
             type="text"
             placeholder="Enter a task"
             value={task}
             onChange={(e) => setTask(e.target.value)}
-            style={{
-              flex: 1,
-              padding: "10px",
-              border: "1px solid #ddd",
-              borderRadius: "5px",
-              fontSize: "14px",
-            }}
+            className="input-sect"
           />
-          <button
-            onClick={addTask}
-            style={{
-              padding: "10px 15px",
-              marginLeft: "10px",
-              backgroundColor: "#28a745",
-              color: "white",
-              border: "none",
-              borderRadius: "5px",
-              cursor: "pointer",
-              fontSize: "14px",
-            }}
-          >
+          <button onClick={addTask} className="add-btn">
             Add
           </button>
         </div>
-        <ul style={{ listStyle: "none", padding: 0 }}>
-          {tasks.map((t, index) => (
-            <li
-              key={index}
-              style={{
-                backgroundColor: "#f7f7f7",
-                padding: "10px",
-                marginBottom: "10px",
-                borderRadius: "5px",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                border: "1px solid #ddd",
-              }}
-            >
-              <span
-                style={{
-                  textDecoration: done[index] ? "line-through" : "none",
-                  color: done[index] ? "#999" : "#333",
-                }}
-              >
-                {t}
-              </span>
-              <div>
-                <button
-                  onClick={() => toggleDone(index)}
-                  style={{
-                    padding: "5px 10px",
-                    marginRight: "5px",
-                    backgroundColor: done[index] ? "#ffc107" : "#28a745",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "5px",
-                    cursor: "pointer",
-                    fontSize: "12px",
-                  }}
-                >
-                  {done[index] ? "Undo" : "Done"}
-                </button>
-                <button
-                  onClick={() => removeTask(index)}
-                  style={{
-                    padding: "5px 10px",
-                    backgroundColor: "#dc3545",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "5px",
-                    cursor: "pointer",
-                    fontSize: "12px",
-                  }}
-                >
-                  Remove
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
-        {tasks.length > 0 && (
+
+        {/* Filter Buttons */}
+        <div className="filters">
           <button
-            onClick={() => setTasks([])}
-            style={{
-              width: "100%",
-              padding: "10px",
-              marginTop: "10px",
-              backgroundColor: "#007bff",
-              color: "white",
-              border: "none",
-              borderRadius: "5px",
-              cursor: "pointer",
-              fontSize: "14px",
-            }}
-          >
+            className={`filter-btn ${filter === "all" ? "active" : ""}`}
+            onClick={() => setFilter("all")}>
+            All
+          </button>
+          <button
+            className={`filter-btn ${filter === "completed" ? "active" : ""}`}
+            onClick={() => setFilter("completed")}>
+            Completed
+          </button>
+          <button
+            className={`filter-btn ${filter === "pending" ? "active" : ""}`}
+            onClick={() => setFilter("pending")}>
+            Pending
+          </button>
+        </div>
+
+        <ul className="ul-list">
+          {/* Rendering List Dynamically with Filters */}
+          {filteredTasks.length > 0 ? (
+            filteredTasks.map((t, index) => (
+              <li key={index} className="li-list">
+                <span
+                  style={{
+                    textDecoration: t.done ? "line-through" : "none",
+                    color: t.done ? "#999" : "#333",
+                  }}>
+                  {t.text}
+                </span>
+                <div>
+                  <button
+                    onClick={() => toggleDone(index)}
+                    className="done-btn"
+                    style={{
+                      backgroundColor: t.done ? "#ffc107" : "#28a745",
+                    }}>
+                    {t.done ? "Undo" : "Done"}
+                  </button>
+                  <button
+                    onClick={() => removeTask(index)}
+                    className="remove-btn">
+                    Remove
+                  </button>
+                </div>
+              </li>
+            ))
+          ) : (
+            <div className="empty-list">No tasks match the filter!</div>
+          )}
+        </ul>
+
+        {/* Clear All Button */}
+        {tasks.length > 0 && (
+          <button onClick={clearAll} className="clear-btn">
             Clear All
           </button>
         )}
